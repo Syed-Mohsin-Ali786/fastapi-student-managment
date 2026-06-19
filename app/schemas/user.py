@@ -20,4 +20,3 @@ class UserResponse(BaseModel):
     id: int
     name: str = Field(min_length=3, max_length=50,examples=["user"])
     email: EmailStr = Field(max_length=50,examples=["user@gmail.com"])
-    role: UserRole

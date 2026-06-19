@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.schemas.user import UserRegisterSchema, UserLoginSchema, UserResponse
 from app.database import get_db, SessionLocal
 from app.models.user import User
-from app.auth import make_hash, verify_hash, create_access_token,get_current_user , create_user_jwt, RoleChecker
+from app.models.role import Role
+from app.auth import make_hash, verify_hash, create_access_token,get_current_user, RoleChecker, PermissionCheck
 
 
 router = APIRouter(prefix="/auth",tags=["Authentication"])
@@ -10,12 +11,18 @@ router = APIRouter(prefix="/auth",tags=["Authentication"])
 @router.post("/register")
 def register(data: UserRegisterSchema, db = Depends(get_db)):
     
+    role = db.query(Role).filter(Role.name == data.role).first()
+    # print(type(teacher_role))
+
+    # return teacher_role
+
     user = User(
         name = data.name,
         email = data.email,
-        role = data.role,
         password = make_hash(data.password)
     )
+
+    user.roles.append(role)
 
     db.add(user)
     db.commit()
@@ -37,20 +44,22 @@ def login(cred: UserLoginSchema, db = Depends(get_db)):
             detail="invalid password"
         )
     
-    token = create_access_token({"id":user.id,"role":user.role})
+    token = create_access_token({"id":user.id})
 
     return {
         "access_token":token,
         "token_type": "Bearer"
     }
 
-@router.get("/profile", response_model=UserResponse)
-def profile(user = Depends(RoleChecker("admin"))):
+@router.get("/profile")
+def profile(user = Depends(RoleChecker(["admin","student"]))):
     return user
 
-@router.get("/admin", response_model=UserResponse)
-def admin(user = Depends(RoleChecker)):
-    return user
+
+@router.get("/create-teacher")
+def create_teacher(user = Depends(PermissionCheck("add teacher"))):
+ 
+    return "you can create teacher"
     
 
     

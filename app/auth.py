@@ -43,7 +43,7 @@ def create_access_token(data:dict)->str:
         algorithm
     )
 
-def create_user_jwt(db=Depends(get_db),cred: HTTPAuthorizationCredentials = Depends(session)) -> User:
+def get_current_user(db=Depends(get_db),cred: HTTPAuthorizationCredentials = Depends(session)) -> User:
     token = cred.credentials
 
     try:
@@ -51,12 +51,6 @@ def create_user_jwt(db=Depends(get_db),cred: HTTPAuthorizationCredentials = Depe
             token,
             secret_key,
             algorithm
-        )
-
-        if data["role"] != "admin":
-            raise HTTPException(
-            status_code=401,
-            detail="unauthorized"
         )
 
         user = db.get(User,data["id"])
@@ -104,7 +98,16 @@ class RoleChecker:
         self.allowed_roles = allowed_roles
 
     def __call__(self, user: User = Depends(get_current_user)) -> User:
-        if user.role not in self.allowed_roles:
+
+        intersection = list(set(self.allowed_roles).intersection(user.role_name))
+        print(intersection)
+        # check = False
+        # for role in user.roles:
+        #     if role.name in self.allowed_roles:
+        #         check = True
+        #         break
+
+        if len(intersection) == 0:
             raise HTTPException(
                 status_code=403,
                 detail="You don't have permission for this resource",
@@ -112,3 +115,14 @@ class RoleChecker:
         return user
 
 
+class PermissionCheck():
+    def __init__(self, permission):
+        self.permission = permission
+
+    def __call__(self, user = Depends(get_current_user)):
+        if not self.permission in user.permissions:
+            raise HTTPException(
+                status_code=401,
+                detail="permission denied"
+            )
+        return user

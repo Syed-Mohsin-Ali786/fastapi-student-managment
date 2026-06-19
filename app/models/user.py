@@ -1,6 +1,6 @@
 from app.database import Base
 from sqlalchemy import String, Text, Column, Enum as sqlEnum
-from sqlalchemy.orm import Mapped, MappedColumn
+from sqlalchemy.orm import Mapped, MappedColumn, relationship
 
 from enum import Enum
 
@@ -22,7 +22,23 @@ class User(Base):
                                       
     password: Mapped[str] = MappedColumn(Text)
 
-    role: Mapped[UserRole] = MappedColumn(
-        sqlEnum(UserRole)
+    roles: Mapped[list["Role"]] = relationship(
+        secondary="user_roles",
+        back_populates="users",
+        lazy="selectin"
     )
+
+    @property
+    def permissions(self):
+        return {
+                    permission.name
+                    for role in self.roles 
+                    for permission in role.permissions
+                }
+    @property
+    def role_name(self):
+        return {
+                    role.name
+                    for role in self.roles
+                }
     
